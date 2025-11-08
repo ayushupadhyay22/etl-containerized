@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16 # Using a specific version for stability
+    container_name: my_postgres_db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydatabase
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persist data
+    healthcheck: # Ensure DB is ready before app starts
+      test: ["CMD-SHELL", "pg_isready -U myuser -d mydatabase"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: ./app # Build the Docker image for our app from the 'app' directory
+    container_name: my_data_processor_app
+    environment:
+      # Pass DB connection details to the app
+      DB_HOST: db # Use the service name 'db' as the hostname
+      DB_NAME: mydatabase
+      DB_USER: myuser
+      DB_PASSWORD: mypassword
+      DB_PORT: 5432
+      WEBSITE_URL: 'http://quotes.toscrape.com/' # Example website
+    depends_on:
+      db:
+        condition: service_healthy # Ensure DB is healthy before starting the app
+    # Command to run the Python script inside the container
+    command: python data_processor.py
+volumes:
+  postgres_data:
